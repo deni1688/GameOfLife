@@ -2,7 +2,7 @@ import React, {useCallback, useEffect, useRef, useState} from 'react';
 
 const CELL_SIZE = 15;
 
-const ops = [
+const coords = [
     [0, 1],
     [0, -1],
     [1, -1],
@@ -13,31 +13,40 @@ const ops = [
     [-1, 0]
 ];
 
-type CellProps = { c: number, setLife: (n: number) => void };
+type CellPrcoords = { c: number, setCellState: (n: number) => void };
 
-function Cell({c, setLife}: CellProps) {
+function Cell({c, setCellState}: CellPrcoords) {
     return <div style={{
         width: CELL_SIZE + 'px',
         height: CELL_SIZE + 'px',
         border: "1pt solid black",
-        backgroundColor: c ? "#000" : "",
-    }} onClick={() => c ? setLife(0) : setLife(1)}/>;
+        backgroundColor: c ? "black" : undefined,
+    }} onClick={() => c ? setCellState(0) : setCellState(1)}/>
+}
+
+function mapGrid(gridSize: number, cellState: number) {
+    return [...Array(gridSize).keys()].map(() => Array(gridSize).fill(cellState));
 }
 
 function App() {
-    const [gridSize, setGriSize] = useState(30);
+    const [gridSize, setGriSize] = useState(32);
     const [grid, setGrid] = useState(() => {
-        return Array(gridSize).fill(0).map(() => Array(gridSize).fill(0));
+        return mapGrid(gridSize, 0);
     });
 
+
     useEffect(() => {
-        setGrid(Array(gridSize).fill(0).map(() => Array(gridSize).fill(0)))
+        setGrid(mapGrid(gridSize, 0));
     }, [gridSize]);
 
+    const [generation, setEvolutions] = useState(0);
     const [running, setRunning] = useState(false);
 
+    const generationRef = useRef(generation);
     const runningRef = useRef(running);
+
     runningRef.current = running;
+    generationRef.current = generation;
 
     const runSimulation = useCallback(() => {
         if (!runningRef.current) {
@@ -48,51 +57,62 @@ function App() {
             const gridCopy = grid.slice();
 
             gridCopy.forEach((r, ri) => r.forEach((c, ci) => {
-                let n = 0;
-                ops.forEach(([x, y]) => {
-                    const newRi = ri + x;
-                    const newCi = ci + y;
-                    if (newRi >= 0 && newRi < gridSize && newCi >= 0 && newCi < gridSize) {
-                        n += gridCopy[newRi][newCi];
+                let nSum = 0;
+                coords.forEach(([x, y]) => {
+                    const nRi = ri + x;
+                    const nCi = ci + y;
+
+                    const rowInBounds = nRi >= 0 && nRi < gridSize;
+                    const columnInBounds = nCi >= 0 && nCi < gridSize;
+
+                    if (rowInBounds && columnInBounds) {
+                        nSum += gridCopy[nRi][nCi];
                     }
                 });
 
-                if (n < 2 || n > 3) {
+                if (nSum < 2 || nSum > 3) {
                     gridCopy[ri][ci] = 0;
-                } else if (gridCopy[ri][ci] === 0 && n === 3) {
-                    gridCopy[ri][ci] = 1;
+                    return;
                 }
 
+                if (gridCopy[ri][ci] === 0 && nSum === 3) {
+                    gridCopy[ri][ci] = 1;
+                    return;
+                }
             }));
 
             return gridCopy;
         });
-
-        setTimeout(runSimulation, 1000);
-    }, []);
+        setEvolutions(generationRef.current + 1);
+        setTimeout(runSimulation, 150);
+    }, [/* do not update ever */]);
 
     return (
         <div>
-            <div>
-                <button style={{margin: '10px 10px'}} onClick={() => {
+            <div className="d-flex align-item-center p-2">
+                <button className="btn btn-primary" onClick={() => {
                     setRunning(!running);
                     runningRef.current = !running;
                     runSimulation();
                 }}>
                     {running ? 'Stop Simulation' : 'Start Simulation'}
                 </button>
-                <input disabled={running} type="range" value={gridSize} min={30} max={60}
-                       onChange={e => setGriSize(parseInt(e.target.value))}/>
+                <div className="d-flex align-item-center p-2">
+                    <input disabled={running} type="range" value={gridSize} min={32} max={64}
+                           onChange={e => setGriSize(parseInt(e.target.value))}/>
+                    <label className="ml-2 mt-2">{gridSize}&times;{gridSize}</label>
+                </div>
+                <div className="p-3 border border-dark rounded">Generation: {generation}</div>
             </div>
             <div style={{
                 display: 'grid',
                 gridTemplateColumns: `repeat(${gridSize}, ${CELL_SIZE}px)`,
-                gap: '1px 4px'
+                gap: '1px 2px'
             }}>
                 {grid.map((r, ri) => r.map((c, ci) => <Cell
                     key={`${ri}-${ci}`}
                     c={c}
-                    setLife={(v: number) => setGrid(grid => {
+                    setCellState={(v: number) => setGrid(grid => {
                         const gridCopy = grid.slice();
 
                         gridCopy[ri][ci] = v;
