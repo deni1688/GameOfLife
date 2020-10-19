@@ -1,21 +1,20 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
-const cellSize = 25;
-
-type CellProps = { cellState: number, toggleCellState: (n: number) => void };
-
 enum cell { ALIVE = 1, DEAD = 0 };
+const cellSize = 20;
 
-function Cell({ cellState, toggleCellState }: CellProps) {
+type CellProps = { isAlive: boolean, toggleCellState: (n: number) => void };
+
+function Cell({ isAlive, toggleCellState }: CellProps) {
     return <div style={{
         width: cellSize + 'px',
         height: cellSize + 'px',
-        border: "1pt solid black",
-        backgroundColor: cellState ? "black" : undefined,
-    }} onClick={() => cellState ? toggleCellState(cell.DEAD) : toggleCellState(cell.ALIVE)} />
+        border: `1pt solid ${isAlive ? "#007bff" : "#ccc"}`,
+        backgroundColor: isAlive ? "#007bff" : undefined,
+    }} onClick={() => isAlive ? toggleCellState(cell.DEAD) : toggleCellState(cell.ALIVE)} />
 }
 
-function gridWith(gridSize: number, cellState: number) {
+function createGridWith(gridSize: number, cellState: number) {
     return [...Array(gridSize).keys()].map(() => Array(gridSize).fill(cellState));
 }
 
@@ -32,14 +31,14 @@ function countLiving(grid: any[][], row: number, col: number, gridSize: number) 
     }, 0);
 }
 
-function deepCopy(g: number[][]): number[][] {
-    return JSON.parse(JSON.stringify(g));
+function deepCopy(grid: number[][]): number[][] {
+    return JSON.parse(JSON.stringify(grid));
 }
 
 function App() {
     const [gridSize, setGriSize] = useState(32);
     const [grid, setGrid] = useState(() => {
-        return gridWith(gridSize, cell.DEAD);
+        return createGridWith(gridSize, cell.DEAD);
     });
 
     const [generation, setGeneration] = useState(cell.DEAD);
@@ -52,14 +51,12 @@ function App() {
     generationRef.current = generation;
 
     useEffect(() => {
-        setGrid(gridWith(gridSize, cell.DEAD));
+        setGrid(createGridWith(gridSize, cell.DEAD));
         setGeneration(0);
     }, [gridSize]);
 
-    const runSimulation = useCallback(() => {
-        if (!runningRef.current) {
-            return;
-        }
+    const startGameOfLife = useCallback(() => {
+        if (!runningRef.current) { return; }
 
         setGrid(g => {
             const gc = deepCopy(g);
@@ -82,7 +79,7 @@ function App() {
         });
 
         setGeneration(++generationRef.current);
-        setTimeout(runSimulation, 100);
+        setTimeout(startGameOfLife, 100);
     }, []);
 
     return (
@@ -91,15 +88,15 @@ function App() {
                 <button className="btn btn-primary" onClick={() => {
                     setRunning(!running);
                     runningRef.current = !running;
-                    runSimulation();
+                    startGameOfLife();
                 }}>
                     {running ? 'Stop Simulation' : 'Start Simulation'}
                 </button>
                 <button className="btn btn-primary ml-2" disabled={running} onClick={() => {
-                    setGrid(gridWith(gridSize, 0));
+                    setGrid(createGridWith(gridSize, 0));
                     setGeneration(0);
                 }}>
-                    Clear
+                    Reset
                 </button>
                 <div className="d-flex align-item-center p-2">
                     <input disabled={running} type="range" value={gridSize} min={32} max={64}
@@ -113,10 +110,8 @@ function App() {
                 gridTemplateColumns: `repeat(${gridSize}, ${cellSize}px)`,
                 gap: '1px 2px'
             }}>
-                {grid.map((r, ri) => r.map((c, ci) => <Cell
-                    key={`${ri}-${ci}`}
-                    cellState={c}
-                    toggleCellState={(v: number) => setGrid(g => {
+                {grid.map((r, ri) => r.map((c, ci) => 
+                <Cell key={`${ri}-${ci}`} isAlive={!!c} toggleCellState={(v: number) => setGrid(g => {
                         const gc = deepCopy(g);
                         gc[ri][ci] = v;
 
