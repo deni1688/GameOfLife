@@ -1,28 +1,25 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
-const CELL_SIZE = 25;
+const cellSize = 25;
 
-type CellPrcoords = { c: number, setCellState: (n: number) => void };
+type CellProps = { cellState: number, toggleCellState: (n: number) => void };
 
-enum cell {
-    ALIVE = 1,
-    DEAD = 0
-}
+enum cell { ALIVE = 1, DEAD = 0 };
 
-function Cell({ c, setCellState }: CellPrcoords) {
+function Cell({ cellState, toggleCellState }: CellProps) {
     return <div style={{
-        width: CELL_SIZE + 'px',
-        height: CELL_SIZE + 'px',
+        width: cellSize + 'px',
+        height: cellSize + 'px',
         border: "1pt solid black",
-        backgroundColor: c ? "black" : undefined,
-    }} onClick={() => c ? setCellState(cell.DEAD) : setCellState(cell.ALIVE)}/>
+        backgroundColor: cellState ? "black" : undefined,
+    }} onClick={() => cellState ? toggleCellState(cell.DEAD) : toggleCellState(cell.ALIVE)} />
 }
 
 function gridWith(gridSize: number, cellState: number) {
     return [...Array(gridSize).keys()].map(() => Array(gridSize).fill(cellState));
 }
 
-function countLiving(g: any[][], row: number, col: number, gridSize: number) {
+function countLiving(grid: any[][], row: number, col: number, gridSize: number) {
     return [[0, 1], [0, -1], [1, -1], [-1, 1], [1, 1], [-1, -1], [1, 0], [-1, 0]].reduce((living, [x, y]) => {
         const nRow = x + row;
         const nCol = y + col;
@@ -31,11 +28,11 @@ function countLiving(g: any[][], row: number, col: number, gridSize: number) {
         const isColInGrid = nCol >= 0 && nCol < gridSize;
         const isInGrid = isRowInGrid && isColInGrid;
 
-        return isInGrid ? living += g[nRow][nCol] : living;
+        return isInGrid ? living += grid[nRow][nCol] : living;
     }, 0);
 }
 
-function deepCopy(g: number[][]): number[][] { 
+function deepCopy(g: number[][]): number[][] {
     return JSON.parse(JSON.stringify(g));
 }
 
@@ -44,10 +41,6 @@ function App() {
     const [grid, setGrid] = useState(() => {
         return gridWith(gridSize, cell.DEAD);
     });
-
-    useEffect(() => {
-        setGrid(gridWith(gridSize, cell.DEAD));
-    }, [gridSize]);
 
     const [generation, setGeneration] = useState(cell.DEAD);
     const [running, setRunning] = useState(false);
@@ -58,6 +51,11 @@ function App() {
     runningRef.current = running;
     generationRef.current = generation;
 
+    useEffect(() => {
+        setGrid(gridWith(gridSize, cell.DEAD));
+        setGeneration(0);
+    }, [gridSize]);
+
     const runSimulation = useCallback(() => {
         if (!runningRef.current) {
             return;
@@ -66,21 +64,19 @@ function App() {
         setGrid(g => {
             const gc = deepCopy(g);
 
-            for (let row = 0; row < gridSize; row++) {
-                for (let col = 0; col < gridSize; col++) {
-                    const living = countLiving(g, row, col, gridSize);
+            gc.forEach((r, row) => r.forEach((_, col) => {
+                const living = countLiving(g, row, col, gridSize);
 
-                    if (living < 2 || living > 3) {
-                        gc[row][col] = cell.DEAD;
-                        continue;
-                    }
-
-                    if (g[row][col] === cell.DEAD && living === 3) {
-                        gc[row][col] = cell.ALIVE;
-                        continue;
-                    }
+                if (living < 2 || living > 3) {
+                    gc[row][col] = cell.DEAD;
+                    return;
                 }
-            }
+
+                if (g[row][col] === cell.DEAD && living === 3) {
+                    gc[row][col] = cell.ALIVE;
+                    return;
+                }
+            }));
 
             return gc;
         });
@@ -114,13 +110,13 @@ function App() {
             </div>
             <div style={{
                 display: 'grid',
-                gridTemplateColumns: `repeat(${gridSize}, ${CELL_SIZE}px)`,
+                gridTemplateColumns: `repeat(${gridSize}, ${cellSize}px)`,
                 gap: '1px 2px'
             }}>
                 {grid.map((r, ri) => r.map((c, ci) => <Cell
                     key={`${ri}-${ci}`}
-                    c={c}
-                    setCellState={(v: number) => setGrid(g => {
+                    cellState={c}
+                    toggleCellState={(v: number) => setGrid(g => {
                         const gc = deepCopy(g);
                         gc[ri][ci] = v;
 
