@@ -1,45 +1,55 @@
-import React, {useCallback, useEffect, useRef, useState} from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
-const CELL_SIZE = 15;
-
-const coords = [
-    [0, 1],
-    [0, -1],
-    [1, -1],
-    [-1, 1],
-    [1, 1],
-    [-1, -1],
-    [1, 0],
-    [-1, 0]
-];
+const CELL_SIZE = 25;
 
 type CellPrcoords = { c: number, setCellState: (n: number) => void };
 
-function Cell({c, setCellState}: CellPrcoords) {
+enum cell {
+    ALIVE = 1,
+    DEAD = 0
+}
+
+function Cell({ c, setCellState }: CellPrcoords) {
     return <div style={{
         width: CELL_SIZE + 'px',
         height: CELL_SIZE + 'px',
         border: "1pt solid black",
         backgroundColor: c ? "black" : undefined,
-    }} onClick={() => c ? setCellState(0) : setCellState(1)}/>
+    }} onClick={() => c ? setCellState(cell.DEAD) : setCellState(cell.ALIVE)}/>
 }
 
-function mapGrid(gridSize: number, cellState: number) {
+function gridWith(gridSize: number, cellState: number) {
     return [...Array(gridSize).keys()].map(() => Array(gridSize).fill(cellState));
+}
+
+function countLiving(g: any[][], row: number, col: number, gridSize: number) {
+    return [[0, 1], [0, -1], [1, -1], [-1, 1], [1, 1], [-1, -1], [1, 0], [-1, 0]].reduce((living, [x, y]) => {
+        const nRow = x + row;
+        const nCol = y + col;
+
+        const isRowInGrid = nRow >= 0 && nRow < gridSize;
+        const isColInGrid = nCol >= 0 && nCol < gridSize;
+        const isInGrid = isRowInGrid && isColInGrid;
+
+        return isInGrid ? living += g[nRow][nCol] : living;
+    }, 0);
+}
+
+function deepCopy(g: number[][]): number[][] { 
+    return JSON.parse(JSON.stringify(g));
 }
 
 function App() {
     const [gridSize, setGriSize] = useState(32);
     const [grid, setGrid] = useState(() => {
-        return mapGrid(gridSize, 0);
+        return gridWith(gridSize, cell.DEAD);
     });
 
-
     useEffect(() => {
-        setGrid(mapGrid(gridSize, 0));
+        setGrid(gridWith(gridSize, cell.DEAD));
     }, [gridSize]);
 
-    const [generation, setEvolutions] = useState(0);
+    const [generation, setGeneration] = useState(cell.DEAD);
     const [running, setRunning] = useState(false);
 
     const generationRef = useRef(generation);
@@ -53,39 +63,31 @@ function App() {
             return;
         }
 
-        setGrid(grid => {
-            const gridCopy = grid.slice();
+        setGrid(g => {
+            const gc = deepCopy(g);
 
-            gridCopy.forEach((r, ri) => r.forEach((c, ci) => {
-                let nSum = 0;
-                coords.forEach(([x, y]) => {
-                    const nRi = ri + x;
-                    const nCi = ci + y;
+            for (let row = 0; row < gridSize; row++) {
+                for (let col = 0; col < gridSize; col++) {
+                    const living = countLiving(g, row, col, gridSize);
 
-                    const rowInBounds = nRi >= 0 && nRi < gridSize;
-                    const columnInBounds = nCi >= 0 && nCi < gridSize;
-
-                    if (rowInBounds && columnInBounds) {
-                        nSum += gridCopy[nRi][nCi];
+                    if (living < 2 || living > 3) {
+                        gc[row][col] = cell.DEAD;
+                        continue;
                     }
-                });
 
-                if (nSum < 2 || nSum > 3) {
-                    gridCopy[ri][ci] = 0;
-                    return;
+                    if (g[row][col] === cell.DEAD && living === 3) {
+                        gc[row][col] = cell.ALIVE;
+                        continue;
+                    }
                 }
+            }
 
-                if (gridCopy[ri][ci] === 0 && nSum === 3) {
-                    gridCopy[ri][ci] = 1;
-                    return;
-                }
-            }));
-
-            return gridCopy;
+            return gc;
         });
-        setEvolutions(generationRef.current + 1);
-        setTimeout(runSimulation, 150);
-    }, [/* do not update ever */]);
+
+        setGeneration(++generationRef.current);
+        setTimeout(runSimulation, 100);
+    }, []);
 
     return (
         <div>
@@ -97,9 +99,15 @@ function App() {
                 }}>
                     {running ? 'Stop Simulation' : 'Start Simulation'}
                 </button>
+                <button className="btn btn-primary ml-2" disabled={running} onClick={() => {
+                    setGrid(gridWith(gridSize, 0));
+                    setGeneration(0);
+                }}>
+                    Clear
+                </button>
                 <div className="d-flex align-item-center p-2">
                     <input disabled={running} type="range" value={gridSize} min={32} max={64}
-                           onChange={e => setGriSize(parseInt(e.target.value))}/>
+                        onChange={e => setGriSize(parseInt(e.target.value))} />
                     <label className="ml-2 mt-2">{gridSize}&times;{gridSize}</label>
                 </div>
                 <div className="p-3 border border-dark rounded">Generation: {generation}</div>
@@ -112,12 +120,11 @@ function App() {
                 {grid.map((r, ri) => r.map((c, ci) => <Cell
                     key={`${ri}-${ci}`}
                     c={c}
-                    setCellState={(v: number) => setGrid(grid => {
-                        const gridCopy = grid.slice();
+                    setCellState={(v: number) => setGrid(g => {
+                        const gc = deepCopy(g);
+                        gc[ri][ci] = v;
 
-                        gridCopy[ri][ci] = v;
-
-                        return gridCopy;
+                        return gc;
                     })}
                 />))}
             </div>
@@ -126,3 +133,4 @@ function App() {
 }
 
 export default App;
+
