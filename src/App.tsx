@@ -36,7 +36,7 @@ function deepCopy(grid: number[][]): number[][] {
 }
 
 function App() {
-    const [gridSize, setGriSize] = useState(32);
+    const [gridSize, setGriSize] = useState(36);
     const [grid, setGrid] = useState(() => {
         return createGridWith(gridSize, cell.DEAD);
     });
@@ -83,8 +83,8 @@ function App() {
     }, []);
 
     return (
-        <div>
-            <div className="d-flex align-item-center p-2">
+        <div className="p-3">
+            <div className="d-flex align-item-center pb-3">
                 <button className="btn btn-primary" onClick={() => {
                     setRunning(!running);
                     runningRef.current = !running;
@@ -104,7 +104,7 @@ function App() {
                     Random
                 </button>
                 <div className="d-flex align-item-center p-2">
-                    <input disabled={running} type="range" value={gridSize} min={32} max={64}
+                    <input disabled={running} type="range" value={gridSize} min={36} max={64}
                         onChange={e => setGriSize(parseInt(e.target.value))} />
                     <label className="ml-2 mt-2">{gridSize}&times;{gridSize}</label>
                 </div>
