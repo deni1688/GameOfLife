@@ -9,8 +9,8 @@ function Cell({ isAlive, toggleCellState }: CellProps) {
     return <div style={{
         width: cellSize + 'px',
         height: cellSize + 'px',
-        border: `1pt solid ${isAlive ? "#007bff" : "#ccc"}`,
-        backgroundColor: isAlive ? "#007bff" : undefined,
+        border: `1pt solid ${isAlive ? "#e83e8c" : "#ccc"}`,
+        backgroundColor: isAlive ? "#e83e8c" : undefined,
     }} onClick={() => isAlive ? toggleCellState(cell.DEAD) : toggleCellState(cell.ALIVE)} />
 }
 
@@ -79,7 +79,7 @@ function App() {
         });
 
         setGeneration(++generationRef.current);
-        setTimeout(startGameOfLife, 100);
+        setTimeout(startGameOfLife, 10);
     }, []);
 
     return (
@@ -98,6 +98,11 @@ function App() {
                 }}>
                     Reset
                 </button>
+                <button className="btn btn-primary ml-2" disabled={running} onClick={() => setGrid(
+                    [...Array(gridSize).keys()].map(() => Array.from(Array(gridSize), () => (Math.random() > .8 ? 1 : 0)))
+                )}>
+                    Random
+                </button>
                 <div className="d-flex align-item-center p-2">
                     <input disabled={running} type="range" value={gridSize} min={32} max={64}
                         onChange={e => setGriSize(parseInt(e.target.value))} />
@@ -108,9 +113,8 @@ function App() {
             <div style={{
                 display: 'grid',
                 gridTemplateColumns: `repeat(${gridSize}, ${cellSize}px)`,
-                gap: '1px 2px'
             }}>
-                {grid.map((r, ri) => r.map((c, ci) => 
+                {grid.map((r, ri) => r.map((c, ci) =>
                 <Cell key={`${ri}-${ci}`} isAlive={!!c} toggleCellState={(v: number) => setGrid(g => {
                         const gc = deepCopy(g);
                         gc[ri][ci] = v;
