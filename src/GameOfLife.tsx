@@ -64,15 +64,15 @@ function GameOfLife() {
         }));
 
         setGeneration(++generationRef.current);
-        setTimeout(startGameOfLife, 100);
-    }, []);
+        setTimeout(startGameOfLife, 300);
+    }, [gridSize]);
 
     const toggleCellState = useCallback((ci: number) => (v: number) => setGrid(g => {
         const gc = [...g];
         gc[ci] = v;
 
         return gc;
-    }), []);
+    }), [gridSize]);
 
     return (
         <div className="p-3">
