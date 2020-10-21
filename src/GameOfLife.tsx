@@ -5,21 +5,16 @@ enum cell { ALIVE = 1, DEAD = 0 };
 const cellSize = 20;
 
 function createGridWith(gridSize: number, cellState: number) {
-    return Array(gridSize*gridSize).fill(cellState);
+    return Array(gridSize * gridSize).fill(cellState);
 }
 
 function countLiving(grid: number[], ci: number, gridSize: number) {
-    return [1, -1, gridSize, -gridSize, gridSize+1, gridSize-1, -gridSize+1, -gridSize-1].reduce((living, pos) => {
+    return [1, -1, gridSize, -gridSize, gridSize + 1, gridSize - 1, -gridSize + 1, -gridSize - 1].reduce((living, pos) => {
         const nPos = pos + ci;
+        const isInGrid = grid[nPos] >= 0 && grid[nPos] < (gridSize * gridSize);
 
-        const isInGrid = grid[nPos] >= 0 && grid[nPos] < (gridSize*gridSize);
-
-        return isInGrid ? living += grid[nPos]: living;
+        return isInGrid ? living += grid[nPos] : living;
     }, 0);
-}
-
-function deepCopy(grid: number[]): number[] {
-    return JSON.parse(JSON.stringify(grid));
 }
 
 function Cell({ isAlive, toggleCellState }: { isAlive: boolean, toggleCellState: (n: number) => void }) {
@@ -32,7 +27,7 @@ function Cell({ isAlive, toggleCellState }: { isAlive: boolean, toggleCellState:
 }
 
 function GameOfLife() {
-    const [gridSize, setGriSize] = useState(30);
+    const [gridSize, setGriSize] = useState(36);
     const [grid, setGrid] = useState(() => {
         return createGridWith(gridSize, cell.DEAD);
     });
@@ -54,34 +49,26 @@ function GameOfLife() {
     const startGameOfLife = useCallback(() => {
         if (!runningRef.current) { return; }
 
-        setGrid(g => {
-            const gc = deepCopy(g);
-            const gridSizeSquared = gridSize * gridSize;
+        setGrid(g => g.map((c, ci, gc) => {
+            const living = countLiving(gc, ci, gridSize);
 
-            for (let ci = 0; ci < gridSizeSquared; ci++) {
-                const living = countLiving(g, ci, gridSize);
-                
-
-                if (living < 2 || living > 3) {
-                    gc[ci] = cell.DEAD;
-                    continue;
-                }
-
-                if (g[ci] === cell.DEAD && living === 3) {
-                    gc[ci] = cell.ALIVE;
-                    continue;
-                }
+            if (living < 2 || living > 3) {
+                return cell.DEAD;
             }
 
-            return gc;
-        });
+            if (c === cell.DEAD && living === 3) {
+                return cell.ALIVE;
+            }
+
+            return c;
+        }));
 
         setGeneration(++generationRef.current);
         setTimeout(startGameOfLife, 100);
     }, []);
 
     const toggleCellState = useCallback((ci: number) => (v: number) => setGrid(g => {
-        const gc = deepCopy(g);
+        const gc = [...g];
         gc[ci] = v;
 
         return gc;
@@ -104,7 +91,7 @@ function GameOfLife() {
                     Reset
                 </button>
                 <button className="btn btn-primary ml-2" disabled={running} onClick={() => setGrid(
-                    Array.from(Array(gridSize*gridSize), () => (Math.random() > .8 ? 1 : 0))
+                    Array.from(Array(gridSize * gridSize), () => (Math.random() > .8 ? 1 : 0))
                 )}>
                     Random
                 </button>
@@ -119,7 +106,7 @@ function GameOfLife() {
                 display: 'grid',
                 gridTemplateColumns: `repeat(${gridSize}, ${cellSize}px)`,
             }}>
-                {grid.map((c, ci) => <Cell key={ci} isAlive={!!c} toggleCellState={toggleCellState(ci)}/>)}
+                {grid.map((c, ci) => <Cell key={ci} isAlive={!!c} toggleCellState={toggleCellState(ci)} />)}
             </div>
         </div>
     );
