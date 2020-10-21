@@ -1,18 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import ReactDOM from 'react-dom';
 
 enum cell { ALIVE = 1, DEAD = 0 };
 const cellSize = 20;
-
-type CellProps = { isAlive: boolean, toggleCellState: (n: number) => void };
-
-function Cell({ isAlive, toggleCellState }: CellProps) {
-    return <div style={{
-        width: cellSize + 'px',
-        height: cellSize + 'px',
-        border: `1pt solid ${isAlive ? "#e83e8c" : "#ccc"}`,
-        backgroundColor: isAlive ? "#e83e8c" : undefined,
-    }} onClick={() => isAlive ? toggleCellState(cell.DEAD) : toggleCellState(cell.ALIVE)} />
-}
 
 function createGridWith(gridSize: number, cellState: number) {
     return [...Array(gridSize).keys()].map(() => Array(gridSize).fill(cellState));
@@ -35,7 +25,16 @@ function deepCopy(grid: number[][]): number[][] {
     return JSON.parse(JSON.stringify(grid));
 }
 
-function App() {
+function Cell({ isAlive, toggleCellState }: { isAlive: boolean, toggleCellState: (n: number) => void }) {
+    return <div style={{
+        width: cellSize + 'px',
+        height: cellSize + 'px',
+        border: `1pt solid ${isAlive ? "#e83e8c" : "#ccc"}`,
+        backgroundColor: isAlive ? "#e83e8c" : undefined,
+    }} onClick={() => isAlive ? toggleCellState(cell.DEAD) : toggleCellState(cell.ALIVE)} />
+}
+
+function GameOfLife() {
     const [gridSize, setGriSize] = useState(36);
     const [grid, setGrid] = useState(() => {
         return createGridWith(gridSize, cell.DEAD);
@@ -79,8 +78,15 @@ function App() {
         });
 
         setGeneration(++generationRef.current);
-        setTimeout(startGameOfLife, 10);
+        setTimeout(startGameOfLife, 100);
     }, []);
+
+    const toggleCellState = useCallback((ri: number, ci: number) => (v: number) => setGrid(g => {
+        const gc = deepCopy(g);
+        gc[ri][ci] = v;
+
+        return gc;
+    }), []);
 
     return (
         <div className="p-3">
@@ -93,7 +99,7 @@ function App() {
                     {running ? 'Stop Simulation' : 'Start Simulation'}
                 </button>
                 <button className="btn btn-primary ml-2" disabled={running} onClick={() => {
-                    setGrid(createGridWith(gridSize, 0));
+                    setGrid(createGridWith(gridSize, cell.DEAD));
                     setGeneration(0);
                 }}>
                     Reset
@@ -115,17 +121,12 @@ function App() {
                 gridTemplateColumns: `repeat(${gridSize}, ${cellSize}px)`,
             }}>
                 {grid.map((r, ri) => r.map((c, ci) =>
-                <Cell key={`${ri}-${ci}`} isAlive={!!c} toggleCellState={(v: number) => setGrid(g => {
-                        const gc = deepCopy(g);
-                        gc[ri][ci] = v;
-
-                        return gc;
-                    })}
-                />))}
+                    <Cell key={`${ri}-${ci}`} isAlive={!!c} toggleCellState={toggleCellState(ri, ci)}
+                    />))}
             </div>
         </div>
     );
 }
 
-export default App;
+ReactDOM.render(<GameOfLife />, document.getElementById('root'));
 
