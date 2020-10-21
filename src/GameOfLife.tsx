@@ -5,23 +5,20 @@ enum cell { ALIVE = 1, DEAD = 0 };
 const cellSize = 20;
 
 function createGridWith(gridSize: number, cellState: number) {
-    return [...Array(gridSize).keys()].map(() => Array(gridSize).fill(cellState));
+    return Array(gridSize*gridSize).fill(cellState);
 }
 
-function countLiving(grid: any[][], row: number, col: number, gridSize: number) {
-    return [[0, 1], [0, -1], [1, -1], [-1, 1], [1, 1], [-1, -1], [1, 0], [-1, 0]].reduce((living, [x, y]) => {
-        const nRow = x + row;
-        const nCol = y + col;
+function countLiving(grid: number[], ci: number, gridSize: number) {
+    return [1, -1, gridSize, -gridSize, gridSize+1, gridSize-1, -gridSize+1, -gridSize-1].reduce((living, pos) => {
+        const nPos = pos + ci;
 
-        const isRowInGrid = nRow >= 0 && nRow < gridSize;
-        const isColInGrid = nCol >= 0 && nCol < gridSize;
-        const isInGrid = isRowInGrid && isColInGrid;
+        const isInGrid = grid[nPos] >= 0 && grid[nPos] < (gridSize*gridSize);
 
-        return isInGrid ? living += grid[nRow][nCol] : living;
+        return isInGrid ? living += grid[nPos]: living;
     }, 0);
 }
 
-function deepCopy(grid: number[][]): number[][] {
+function deepCopy(grid: number[]): number[] {
     return JSON.parse(JSON.stringify(grid));
 }
 
@@ -35,7 +32,7 @@ function Cell({ isAlive, toggleCellState }: { isAlive: boolean, toggleCellState:
 }
 
 function GameOfLife() {
-    const [gridSize, setGriSize] = useState(36);
+    const [gridSize, setGriSize] = useState(30);
     const [grid, setGrid] = useState(() => {
         return createGridWith(gridSize, cell.DEAD);
     });
@@ -59,20 +56,22 @@ function GameOfLife() {
 
         setGrid(g => {
             const gc = deepCopy(g);
+            const gridSizeSquared = gridSize * gridSize;
 
-            gc.forEach((r, row) => r.forEach((_, col) => {
-                const living = countLiving(g, row, col, gridSize);
+            for (let ci = 0; ci < gridSizeSquared; ci++) {
+                const living = countLiving(g, ci, gridSize);
+                
 
                 if (living < 2 || living > 3) {
-                    gc[row][col] = cell.DEAD;
-                    return;
+                    gc[ci] = cell.DEAD;
+                    continue;
                 }
 
-                if (g[row][col] === cell.DEAD && living === 3) {
-                    gc[row][col] = cell.ALIVE;
-                    return;
+                if (g[ci] === cell.DEAD && living === 3) {
+                    gc[ci] = cell.ALIVE;
+                    continue;
                 }
-            }));
+            }
 
             return gc;
         });
@@ -81,9 +80,9 @@ function GameOfLife() {
         setTimeout(startGameOfLife, 100);
     }, []);
 
-    const toggleCellState = useCallback((ri: number, ci: number) => (v: number) => setGrid(g => {
+    const toggleCellState = useCallback((ci: number) => (v: number) => setGrid(g => {
         const gc = deepCopy(g);
-        gc[ri][ci] = v;
+        gc[ci] = v;
 
         return gc;
     }), []);
@@ -105,7 +104,7 @@ function GameOfLife() {
                     Reset
                 </button>
                 <button className="btn btn-primary ml-2" disabled={running} onClick={() => setGrid(
-                    [...Array(gridSize).keys()].map(() => Array.from(Array(gridSize), () => (Math.random() > .8 ? 1 : 0)))
+                    Array.from(Array(gridSize*gridSize), () => (Math.random() > .8 ? 1 : 0))
                 )}>
                     Random
                 </button>
@@ -120,13 +119,10 @@ function GameOfLife() {
                 display: 'grid',
                 gridTemplateColumns: `repeat(${gridSize}, ${cellSize}px)`,
             }}>
-                {grid.map((r, ri) => r.map((c, ci) =>
-                    <Cell key={`${ri}-${ci}`} isAlive={!!c} toggleCellState={toggleCellState(ri, ci)}
-                    />))}
+                {grid.map((c, ci) => <Cell key={ci} isAlive={!!c} toggleCellState={toggleCellState(ci)}/>)}
             </div>
         </div>
     );
 }
 
 ReactDOM.render(<GameOfLife />, document.getElementById('root'));
-
